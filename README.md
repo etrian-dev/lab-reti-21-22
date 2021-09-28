@@ -12,3 +12,8 @@ gli assignment di ogni lezione, ognuno nella propria directory
 - es1/es2: programma multithreaded che simula una biglietteria con 4 sportelli che ricevono persone (uso di threadpool)
 - es3: programma multithreaded che calcola n^2 + ... + n^50 utilizzando una thread pool
 - Assignment: simulazione di ufficio postale
+## Lezione 3 - Lock e concorrenza
+- es1: classe Counter condivisa da un insieme di thread lettori ed un insieme di thread scrittori
+  - v1: Concorrenza controllata tramite ReentrantLock sia per lettori che scrittori
+  - v2: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da CachedThreadPool)
+  - v3: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da FixedThreadPool)
