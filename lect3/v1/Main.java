@@ -8,10 +8,8 @@ public class Main {
         long start = System.currentTimeMillis();
         for(int i = 0; i < 20; i++) {
             Writer w = new Writer(c);
-            tpool.submit(w);
-        }
-        for(int i = 0; i < 20; i++) {
             Reader r = new Reader(c);
+            tpool.submit(w);
             tpool.submit(r);
         }
 
