@@ -1,0 +1,32 @@
+import java.lang.Math;
+
+public class Professore extends Utente implements Runnable {
+    public Professore(int nPCs, Laboratorio lab) {
+        super(nPCs, lab);
+    }
+
+    public void run() {
+        while(super.numAccesses > 0) {
+            long interval = Math.abs(super.rng.nextLong()) % 100;
+            long workTime = Math.abs(super.rng.nextLong()) % 100;
+            try {
+                // il professore richiede tutti i PC
+                super.laboratorio.request(this, -1);
+                System.out.printf("User %d (Professore): ottenuto tutti i PC\n", Thread.currentThread().getId());
+                System.out.printf("User %d (Professore): lavoro per %dms su tutti i PC\n", Thread.currentThread().getId(), workTime);
+                // il professore usa il laboratorio
+                Thread.sleep(workTime);
+
+                // il professore ha terminato: libera tutti i PC
+                super.laboratorio.freePC(this, -1);
+
+                System.out.printf("User %d (Professore): aspetto %dms\n", Thread.currentThread().getId(), interval);
+                // attesa tra richieste successive
+                Thread.sleep(interval);
+            } catch (InterruptedException e) {
+                super.laboratorio.freePC(this, -1);
+            }
+            super.numAccesses--;
+        }
+    }
+}

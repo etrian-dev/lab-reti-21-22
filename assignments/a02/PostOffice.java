@@ -40,13 +40,12 @@ public class PostOffice extends Thread {
 
         // la coda della prima sala è vuota, per cui lancio lo shutdown e faccio in modo da far terminare tutti i thread presenti
         this.sportelli.shutdown();
-        if (!this.sportelli.isShutdown()) {
+        if (!this.sportelli.isTerminated()) {
             try {
                 // potrebbe essere interrotto durante l'attesa di terminazione dei thread del pool, ma è improbabile
                 this.sportelli.awaitTermination(1, TimeUnit.HOURS);
             } catch (InterruptedException e) {
-                System.out.println(
-                        "Thread interrotto durante attesa shutdown threadpool. Chiamo shutdownNow()");
+                System.out.println("Thread interrotto durante attesa shutdown threadpool. Chiamo shutdownNow()");
                 this.sportelli.shutdownNow();
             }
         }
