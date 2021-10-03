@@ -12,7 +12,7 @@ public class Studente  extends Utente implements Runnable {
             int requested = 0;
             try {
                 // lo studente richiede il PC
-                requested = Math.abs(super.rng.nextInt()) % super.maxPC + 1;
+                requested = Math.abs(super.rng.nextInt()) % super.maxPC;
                 super.laboratorio.request(this, requested);
                 System.out.printf("User %d (Studente): ottenuto il PC %d\n", Thread.currentThread().getId(), requested);
                 System.out.printf("User %d (Studente): lavoro per %dms su %d\n", Thread.currentThread().getId(), workTime, requested);

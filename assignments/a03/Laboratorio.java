@@ -1,46 +1,64 @@
 import java.util.Vector;
 import java.lang.Math;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
-import java.util.concurrent.TimeUnit;
 
-public class Laboratorio extends Thread{
+/**
+ * Classe che contiene l'implementazione del laboratorio di informatica
+ */
+public class Laboratorio extends Thread {
+    private static final Random rng = new Random(System.currentTimeMillis());
+    // Ciascun PC è rappresentato da una lock + variabile di condizione
     private Vector<Lock> all_PCs;
     private Vector<Condition> pc_states;
+    // Tutti gli utenti del laboratorio
     private Vector<Utente> users;
-    ExecutorService tpool;
-    private boolean thesis_waiting;
-    private boolean professor_waiting;
     private int tot_users;
+    // Threadpool che gestisce gli utenti
+    ExecutorService tpool;
+    // Flag per indicare, rispettivamente, che un tesista o un professore sono in attesa di un PC
+    private Vector<Boolean> thesis_waiting; // una flag per ogni PC
+    private boolean professor_waiting; // una sola flag, dato che attende che tutti i PC si liberino
 
+    // Costruttore del Laboratorio: prende in input il numero di PC ed il numero di utenti, differenziati per ruolo
+    // Inoltre riceve in input un array contenente tutti gli Utenti (già inizializzati)
     public Laboratorio(int nPC, int nStudenti, int nTesisti, int nProfessori, Vector<Utente> all_users) {
         // creo tutti i PC
         this.all_PCs = new Vector<Lock>(nPC);
         this.pc_states = new Vector<Condition>(nPC);
-        this.users = all_users;
         for(int i = 0; i < nPC; i++) {
             Lock l = new ReentrantLock();
             this.all_PCs.add(l);
             this.pc_states.add(l.newCondition());
         }
+        // inizializzo gli utenti e la threadpool
+        this.users = all_users;
         this.tot_users = nStudenti + nTesisti + nProfessori;
-        this.thesis_waiting = false;
-        this.professor_waiting = false;
-        // creo una threadpool (fixed, perché ne conosco il numero) per ogni Utente
+        // numero fisso di thread, dato che conosco esattamente il numero di utenti
         this.tpool = Executors.newFixedThreadPool(this.tot_users);
+        // inizialmente nessuno in attesa
+        this.thesis_waiting = new Vector<Boolean>(this.all_PCs.size());
+        for(int i = 0; i < this.all_PCs.size(); i++) {
+            this.thesis_waiting.add(false);
+        }
+        this.professor_waiting = false;
     }
 
+    // Il thread Laboratorio prende un utente a caso nell'array, lo rimuove e fa eseguire
+    // tale task alla threadpool, fino a che non vi sono più utenti da servire
     public void run() {
-        final Random rng = new Random(System.currentTimeMillis());
-        // prendo un Utente a caso e lo eseguo nel thread dedicato
         int usersLeft = this.tot_users;
         while(usersLeft > 0) {
-            int idx = Math.abs(rng.nextInt()) % usersLeft;
-            Utente user = this.users.remove(idx);
-            tpool.execute(user);
-            usersLeft--;
+            Utente user = this.users.remove(Math.abs(rng.nextInt()) % usersLeft);
+            try {
+                tpool.execute(user);
+            } catch (RejectedExecutionException cant_exec) {
+                System.out.println("Impossibile eseguire la task: " + cant_exec);
+            } catch (NullPointerException np) {
+                System.out.println("Task null: " + np);
+            }
+            usersLeft--; // fuori dal try_catch per assicurare terminazione
         }
         // quando tutti sono stati inseriti allora metto la threadpool in shutdown ed attendo la terminazione
         tpool.shutdown();
@@ -53,20 +71,21 @@ public class Laboratorio extends Thread{
         }
     }
 
-    // un Utente fa una richiesta per il PC idx (se who è un professore il parametro è ignorato)
+    // un Utente richiede l'utilizzo del PC idx (se who è un professore il secondo parametro è ignorato)
     public void request(Object who, int idx) {
         Lock pc = null;
         Condition cv = null;
-
+        // studente o tesista prendono lock sul PC richiesto e salvano la relativa condition variable
         if(who instanceof Studente || who instanceof Tesista) {
             pc = this.all_PCs.get(idx);
             cv = this.pc_states.get(idx);
             pc.lock();
         }
 
-        // Se è uno studente ad aver richesto il PC, allora si mette in attesa finchè non ci sono professori o tesisti in attesa
+        // Se uno studente ha ottenuto lock sul PC allora esamina le flag
+        // e si mette in attesa fino a che ci sono professori o tesisti in attesa
         if(who instanceof Studente) {
-            while(this.thesis_waiting || this.professor_waiting) {
+            while(this.thesis_waiting.get(idx) || this.professor_waiting) {
                 try {
                     cv.await();
                 } catch (InterruptedException ex) {
@@ -77,15 +96,15 @@ public class Laboratorio extends Thread{
         // Se è un tesista, similmente, aspetta finchè non ci sono professori in attesa
         else if(who instanceof Tesista) {
             while(this.professor_waiting) {
-                this.thesis_waiting = true;
+                this.thesis_waiting.setElementAt(true, idx); // il tesista si mette in attesa: deve segnalarlo
                 try {
                     cv.await();
                 } catch (InterruptedException ex) {
-                    System.out.println("Thread studente interrotto durante l'attesa");
+                    System.out.println("Thread tesista interrotto durante l'attesa");
                 }
             }
             // Il tesista ha ottenuto il PC: rimetto a false la flag
-            this.thesis_waiting = false;
+            this.thesis_waiting.setElementAt(false, idx);
         }
         // Se è un professore deve aspettare finchè tutti i PC sono liberi, quindi cerca di
         // prendere la ME dal primo all'ultimo, in ordine, settando la flag per evitare che
@@ -99,11 +118,29 @@ public class Laboratorio extends Thread{
             for(i = 0; i < numPCs; i++) {
                 obtained_PCs.add(false);
             }
+
+            this.professor_waiting = true;
+            // finché non ottiene tutti i PC il professore rimane in attesa
             while(obtained < numPCs) {
                 for(i = 0; i < numPCs; i++) {
-                    if(obtained_PCs.get(i).booleanValue() == false && this.all_PCs.get(i).tryLock()) {
-                        obtained_PCs.set(i, true);
-                        obtained++;
+                    // tento di ottenere lock sul PC solo se non è stato già ottenuto
+                    if(obtained_PCs.get(i) == false) {
+                        if(this.all_PCs.get(i).tryLock()) {
+                            // se la tryLock ha successo allora è stato ottenuto il PC
+                            obtained_PCs.setElementAt(true, i);
+                            obtained++;
+                        }
+                        else {
+                            // attendo di ottenere il PC con indice i
+                            // NOTA: un modo alternativo di gestire questo aspetto sarebbe stato di
+                            // non fare await() su questo pc e passare al prossimo
+                            // ma ciò creerebbe attesa attiva, riducendo potenzialmente il troughput
+                            //try {
+                                //this.pc_states.get(i).await();
+                            //} catch (InterruptedException ex) {
+                                //;
+                            //}
+                        }
                     }
                 }
             }
@@ -130,30 +167,5 @@ public class Laboratorio extends Thread{
                 l.unlock();
             }
         }
-    }
-
-    public static void main(String[] args) {
-        final int numPC = 20;
-        // leggo il numero di studenti, tesisti e professori
-        int students = Integer.valueOf(args[0]);
-        int thesis = Integer.valueOf(args[1]);
-        int professors = Integer.valueOf(args[2]);
-        // creo tutti i thread studenti, tesisti e professori
-        // FIXME: Vector<Runnable>
-        // FIXME: Array fisso?
-        Vector<Utente> all_users = new Vector<Utente>(students + thesis + professors);
-        Laboratorio lab = new Laboratorio(numPC, students, thesis, professors, all_users);
-
-        for(int i = 0; i < students; i++) {
-            all_users.add(new Studente(numPC, lab));
-        }
-        for(int i = 0; i < thesis; i++) {
-            all_users.add(new Tesista(numPC, lab, i));
-        }
-        for(int i = 0; i < professors; i++) {
-            all_users.add(new Professore(numPC, lab));
-        }
-
-        lab.start();
     }
 }
