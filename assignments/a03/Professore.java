@@ -6,17 +6,18 @@ public class Professore extends Utente implements Runnable {
     }
 
     public void run() {
-        while(super.numAccesses > 0) {
+        while (super.numAccesses > 0) {
             long interval = Math.abs(super.rng.nextLong()) % 100;
             long workTime = Math.abs(super.rng.nextLong()) % 100;
             try {
                 // il professore richiede tutti i PC
                 super.laboratorio.request(this, -1);
                 System.out.printf("User %d (Professore): ottenuto tutti i PC\n", Thread.currentThread().getId());
-                System.out.printf("User %d (Professore): lavoro per %dms su tutti i PC\n", Thread.currentThread().getId(), workTime);
                 // il professore usa il laboratorio
                 Thread.sleep(workTime);
 
+                System.out.printf("User %d (Professore): ho lavorato per %dms su tutti i PC\n",
+                        Thread.currentThread().getId(), workTime);
                 // il professore ha terminato: libera tutti i PC
                 super.laboratorio.freePC(this, -1);
 
