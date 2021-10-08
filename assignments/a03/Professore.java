@@ -1,5 +1,8 @@
 import java.lang.Math;
 
+/**
+ * Classe Professore: richiede tutti i PC del laboratorio contemporaneamente
+ */
 public class Professore extends Utente implements Runnable {
     public Professore(int nPCs, Laboratorio lab) {
         super(nPCs, lab);

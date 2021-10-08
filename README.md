@@ -17,3 +17,4 @@ gli assignment di ogni lezione, ognuno nella propria directory
   - v1: Concorrenza controllata tramite ReentrantLock sia per lettori che scrittori
   - v2: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da CachedThreadPool)
   - v3: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da FixedThreadPool)
+  - Assignment: simulazione di un laboratorio informatico cui afferiscono Studenti, Tesisti e Professori

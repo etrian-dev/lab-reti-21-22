@@ -1,5 +1,8 @@
 import java.lang.Math;
 
+/**
+ * Classe Tesista: richede l'utilizzo sempre dello stesso PC
+ */
 public class Tesista extends Utente implements Runnable {
     private int myPC;
 

@@ -1,5 +1,8 @@
 import java.lang.Math;
 
+/**
+ * Classe studente: richiede l'utilizzo di un PC qualsiasi
+ */
 public class Studente extends Utente implements Runnable {
     public Studente(int nPCs, Laboratorio lab) {
         super(nPCs, lab);
