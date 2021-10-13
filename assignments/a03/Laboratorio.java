@@ -122,7 +122,6 @@ public class Laboratorio extends Thread {
 
             // se vi è almeno un PC occupato allora il professore deve attendere
             while (this.occupied > 0) {
-                System.out.println("Professore: aspetto che il laboratorio si svuoti");
                 try {
                     clab.await();
                 } catch (InterruptedException ex) {

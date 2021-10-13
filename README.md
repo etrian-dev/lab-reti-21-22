@@ -1,8 +1,8 @@
 # lab-reti-21-22
 Esercizi relativi al corso Laboratorio di Reti - A.A. 2021-2022
 La repository è strutturata in lezioni, che vertono su argomenti mirati. Ogni directory
-lect\* contiene gli esercizi relativi a quella lezione. La directory assignments contiene
-gli assignment di ogni lezione, ognuno nella propria directory
+lect\([0-9])\* contiene gli esercizi relativi a quella lezione. La directory assignments contiene
+gli assignment di ogni lezione, ognuno nella propria directory della forma a([0-9])\*
 ## Lezione 1 - Threads
 - es1: programma non multithreaded
 - es2: programma equivalente, ma MT con classe che estende Thread
@@ -17,4 +17,7 @@ gli assignment di ogni lezione, ognuno nella propria directory
   - v1: Concorrenza controllata tramite ReentrantLock sia per lettori che scrittori
   - v2: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da CachedThreadPool)
   - v3: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da FixedThreadPool)
-  - Assignment: simulazione di un laboratorio informatico cui afferiscono Studenti, Tesisti e Professori
+- Assignment: simulazione di un laboratorio informatico cui afferiscono Studenti, Tesisti e Professori
+## Lezione 4 - Monitor e concurrent Collections
+- es1: Estensione con monitor di una classe Dropbox (buffer di dimensione unitaria) su cui operano un Producer e due Consumer
+- assignment: Implementazione dell'assignment del laboratorio informatico con monitor
