@@ -18,6 +18,9 @@ gli assignment di ogni lezione, ognuno nella propria directory della forma a([0-
   - v2: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da CachedThreadPool)
   - v3: Concorrenza controllata tramite ReadWriteLock, con lock diversificate tra scrittori e lettori (thread gestiti da FixedThreadPool)
 - Assignment: simulazione di un laboratorio informatico cui afferiscono Studenti, Tesisti e Professori
-## Lezione 4 - Monitor e concurrent Collections
+## Lezione 4 - Monitor e synchronized Collections
 - es1: Estensione con monitor di una classe Dropbox (buffer di dimensione unitaria) su cui operano un Producer e due Consumer
 - assignment: Implementazione dell'assignment del laboratorio informatico con monitor
+## Lezione 5 - concurrent Collections and I/O
+- es1: Programma che prende una directory come parametro e ricorsivamente classifica files e directories, scrivendone i nomi su due files omonimi
+- assignment: Un file crawler: prende come input una directory e la esplora ricorsivamente, delegando a dei consumer thread la stampa dei file contenuti (usando una LinkedList per la comunicazione)
