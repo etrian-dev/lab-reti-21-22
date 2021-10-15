@@ -1,6 +1,8 @@
-import java.util.Vector;
+import java.util.List;
+import java.util.ArrayList;
 import java.lang.Math;
 import java.util.Random;
+
 /**
  * Classe contenente il metodo main per l'avvio della simulazione del laboratorio
  * Il programma si aspetta di ricevere come argomenti da riga di comando
@@ -16,7 +18,7 @@ public class MainClass {
         int students = Integer.valueOf(args[0]);
         int thesis = Integer.valueOf(args[1]);
         int professors = Integer.valueOf(args[2]);
-        if(students < 0 || thesis < 0 || professors < 0) {
+        if (students < 0 || thesis < 0 || professors < 0) {
             System.out.println("Usage: java MainClass <studenti> <tesisti> <professori>, argomenti interi >= 0");
             return;
         }
@@ -25,7 +27,7 @@ public class MainClass {
             return;
         }
         // creo tutte le task Utente e l'istanza di Laboratorio
-        Vector<Utente> all_users = new Vector<Utente>(students + thesis + professors);
+        List<Utente> all_users = new ArrayList<Utente>(students + thesis + professors);
         Laboratorio labMarzotto = new Laboratorio(numPC, students, thesis, professors, all_users);
 
         for (int i = 0; i < students; i++) {

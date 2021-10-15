@@ -1,9 +1,7 @@
 public class Computer {
-    private int idx;
     private boolean free;
 
-    public Computer(int id) {
-        this.idx = id;
+    public Computer() {
         this.free = true;
     }
 
@@ -14,6 +12,7 @@ public class Computer {
     public void occupy() {
         this.free = false;
     }
+
     public void free() {
         this.free = true;
     }

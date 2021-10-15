@@ -3,7 +3,6 @@ import java.lang.Math;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Classe che contiene l'implementazione del laboratorio di informatica
@@ -20,29 +19,29 @@ public class Laboratorio extends Thread {
     // Threadpool che gestisce l'esecuzione delle task utente
     ExecutorService tpool;
     // Flag per indicare che un tesista è in attesa che si liberi il PC con tale indice
-    private List<Boolean> thesis_waiting; // una flag per ogni PC
-    private boolean prof_waiting = false;
-    private AtomicInteger occupiedPCs;
+    private Integer[] thesis_waiting; // una flag per ogni PC
+    private int prof_waiting = 0;
+    private boolean prof_in = false;
+    private volatile int occupiedPCs = 0;
 
     // Costruttore del Laboratorio: prende in input il numero di PC ed il numero di utenti, differenziati per ruolo
     // Inoltre riceve in input un vector contenente tutti gli Utenti (già inizializzati)
-    public Laboratorio(int nPC, int nStudenti, int nTesisti, int nProfessori, Vector<Utente> all_users) {
+    public Laboratorio(int nPC, int nStudenti, int nTesisti, int nProfessori, List<Utente> all_users) {
         // creo tutti i PC
         this.numPCs = nPC;
         this.allPCs = new ArrayList<Computer>(nPC);
         for (int i = 0; i < nPC; i++) {
-            this.allPCs.add(new Computer(i));
+            this.allPCs.add(new Computer());
         }
-        this.occupiedPCs.set(0);
         // inizializzo gli utenti e la threadpool
         this.users = all_users;
         this.tot_users = nStudenti + nTesisti + nProfessori;
         // numero fisso di thread, dato che conosco esattamente il numero di utenti
         this.tpool = Executors.newFixedThreadPool(this.tot_users);
         // inizialmente nessuno in attesa
-        this.thesis_waiting = new ArrayList<Boolean>(this.numPCs);
+        this.thesis_waiting = new Integer[this.numPCs];
         for (int i = 0; i < nPC; i++) {
-            this.thesis_waiting.add(false);
+            this.thesis_waiting[i] = 0;
         }
     }
 
@@ -72,96 +71,128 @@ public class Laboratorio extends Thread {
         }
     }
 
-    // Metodo tramite il quale un Utente richiede l'utilizzo del PC idx 
-    // (se who è un professore il secondo parametro è ignorato)
-    public void request(Object who, int idx) {
-        // se who è uno studente o un tesista allora devono aspettare che non vi siano professori in attesa
-        synchronized(allPCs) {
-            while(this.prof_waiting) {
+    public void student_request(int idx, long worktime) {
+        synchronized (this.allPCs) {
+            // se vi è un professore in fila per il laboratorio allora attendo
+            while (this.prof_in || this.prof_waiting > 0) {
                 try {
-                    allPCs.wait();
+                    System.out.println(
+                            "User " + Thread.currentThread().getId() + " (Studente) Professori in attesa: wait()");
+                    this.allPCs.wait();
                 } catch (Exception e) {
-                    System.out.println("Attesa studente o tesista su lab interrotta");
+                    System.out.println("User " + Thread.currentThread().getId() + "(Studente) Attesa interrotta");
                 }
             }
-            if (who instanceof Studente) {
-                // serializzo accesso al pc richiesto
-                synchronized(allPCs.get(idx)) {
-                    while(!allPCs.get(idx).isFree() || this.thesis_waiting.get(idx)) {
-                        try {
-                            allPCs.get(idx).wait();
-                        } catch (Exception e) {
-                            System.out.println("Attesa studente interrotta");
-                        }
-                    }
-                    // occupy this PC
-                    allPCs.get(idx).occupy();
-                    int pc_left = this.occupiedPCs.incrementAndGet();
-                    System.out.println("(Studente) Occupato il PC" + idx + ": " + (this.numPCs - pc_left) + "liberi");
-                }
-            }
-
-            if (who instanceof Tesista) {
-                synchronized(allPCs.get(idx)) {
-                    while(!allPCs.get(idx).isFree() || this.prof_waiting) {
-                        try {
-                            allPCs.get(idx).wait();
-                        } catch (Exception e) {
-                            System.out.println("Attesa tesista interrotta");
-                        }
-                    }
-                    // occupy this PC
-                    allPCs.get(idx).occupy();
-                    int pc_left = this.occupiedPCs.incrementAndGet();
-                    System.out.println("(Studente) Occupato il PC" + idx + ": " + (this.numPCs - pc_left) + "liberi");
-                }
-            }
+            this.occupiedPCs++;
         }
-
-        // Se è un professore deve aspettare finchè tutti i PC sono liberi
-        if (who instanceof Professore) {
-            synchronized(allPCs) {
-                while(this.occupiedPCs.get() > 0) {
-                    try {
-                        allPCs.wait();
-                    } catch (Exception e) {
-                        System.out.println("Attess")
-                    }
+        // occupo il PC se quando diventa libero
+        synchronized (this.allPCs.get(idx)) {
+            while (!this.allPCs.get(idx).isFree() || this.thesis_waiting[idx] > 0) {
+                try {
+                    System.out.println("User " + Thread.currentThread().getId()
+                            + "(Studente) PC occupato o Tesisti in attesa: wait(" + idx + ")");
+                    this.allPCs.get(idx).wait();
+                } catch (Exception e) {
+                    System.out.println("User " + Thread.currentThread().getId() + "(Studente) Attesa interrotta");
                 }
             }
+            this.allPCs.get(idx).occupy();
+            // work
+            try {
+                Thread.sleep(worktime);
+            } catch (Exception e) {
+                //TODO: handle exception
+                ;
+            }
+            this.allPCs.get(idx).free();
+            this.allPCs.get(idx).notify();
+        }
+        synchronized (this.allPCs) {
+            this.occupiedPCs--;
+            this.allPCs.notifyAll();
         }
     }
 
-    public void freePC(Object who, int idx) {
-        // Se il PC è rilasciato da uno studente o tesista si segnala solo chi era in attesa di quel PC
-        if (who instanceof Studente || who instanceof Tesista) {
-            Lock l = this.all_PCs.get(idx);
-            Condition cv = this.pc_states.get(idx);
-            cv.signal();
-            l.unlock();
-
-            // devo anche aggiornare il contatore dei pc occupati e segnalarlo a chi era sospeso sulla lock del laboratorio
-            this.labLock.lock();
-
-            System.out.println("Studente o Tesista: PC " + idx + " libero");
-            this.occupied--;
-            this.clab.signalAll();
-
-            this.labLock.unlock();
-        }
-        // invece se era un Professore segnalo tutte le CV (libera tutti i PC)
-        else if (who instanceof Professore) {
-            for (int i = 0; i < this.all_PCs.size(); i++) {
-                //this.pc_states.get(i).signalAll();
-                this.all_PCs.get(i).unlock();
+    public void thesis_request(int idx, long worktime) {
+        synchronized (this.allPCs) {
+            // se vi è un professore in fila per il laboratorio allora attendo
+            while (this.prof_in || this.prof_waiting > 0) {
+                try {
+                    System.out.println(
+                            "User " + Thread.currentThread().getId() + " (Tesista) Professori in attesa: wait()");
+                    this.allPCs.wait();
+                } catch (Exception e) {
+                    System.out.println("User " + Thread.currentThread().getId() + " (Tesista) Attesa interrotta");
+                }
             }
-            this.labLock.lock();
-            
-            this.occupied = 0;
-            System.out.println("Professore: laboratorio libero");
-            this.clab.signalAll();
-            
-            this.labLock.unlock();
+            this.occupiedPCs++;
+        }
+        // occupo il PC se quando diventa libero
+        synchronized (this.allPCs.get(idx)) {
+            while (!this.allPCs.get(idx).isFree() || this.thesis_waiting[idx] > 0) {
+                try {
+                    System.out.println("User " + Thread.currentThread().getId()
+                            + " (Tesista) PC occupato o Tesisti in attesa: wait(" + idx + ")");
+                    this.allPCs.get(idx).wait();
+                } catch (Exception e) {
+                    System.out.println("User " + Thread.currentThread().getId() + " (Tesista) Attesa interrotta");
+                }
+            }
+            this.allPCs.get(idx).occupy();
+            // work
+            try {
+                Thread.sleep(worktime);
+            } catch (Exception e) {
+                //TODO: handle exception
+                ;
+            }
+            this.allPCs.get(idx).free();
+            this.allPCs.get(idx).notify();
+        }
+        synchronized (this.allPCs) {
+            this.occupiedPCs--;
+            this.allPCs.notifyAll();
+        }
+    }
+
+    public void professor_request(long worktime) {
+        synchronized (this.allPCs) {
+            this.prof_waiting++;
+            while (this.occupiedPCs > 0) {
+                try {
+                    System.out.println("User " + Thread.currentThread().getId()
+                            + "(Professore) Attendo che laboratorio sia libero");
+                    this.allPCs.wait();
+                } catch (Exception e) {
+                    System.out.println("User " + Thread.currentThread().getId() + "(Professore) Attesa interrotta");
+                }
+            }
+            this.prof_waiting--;
+            this.prof_in = true;
+
+            for (Computer c : this.allPCs) {
+                c.occupy();
+            }
+            this.occupiedPCs = this.numPCs;
+        }
+        // work
+        try {
+            Thread.sleep(worktime);
+        } catch (Exception e) {
+            //TODO: handle exception
+            ;
+        }
+        synchronized (this.allPCs) {
+            this.occupiedPCs = 0;
+            this.prof_in = false;
+            System.out.println("User " + Thread.currentThread().getId() + "(Professore) liberati tutti i PC");
+            this.allPCs.notifyAll();
+            for (Computer c : this.allPCs) {
+                synchronized (c) {
+                    c.free();
+                    c.notifyAll();
+                }
+            }
         }
     }
 }
