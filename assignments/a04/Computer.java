@@ -1,4 +1,8 @@
+/**
+ * Classe che incapsula lo stato di un PC del Laboratorio
+ */
 public class Computer {
+    // stato del PC: free = true sse un Utente sta utilizzando il computer
     private boolean free;
 
     public Computer() {

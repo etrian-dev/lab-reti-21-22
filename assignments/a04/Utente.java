@@ -6,7 +6,7 @@ import java.lang.Math;
  * definisce il costruttore del generico Utente e sceglie il numero di accessi che tale Utente
  * compierà durante la simulazione
  */
-public abstract class Utente implements Runnable{
+public abstract class Utente implements Runnable {
     protected long numAccesses;
     protected int maxPC;
     protected static final Random rng = new Random(System.currentTimeMillis());
