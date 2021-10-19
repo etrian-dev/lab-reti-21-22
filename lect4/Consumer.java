@@ -7,7 +7,7 @@
 public class Consumer implements Runnable {
     private boolean consume_even;
     private Dropbox box;
-    
+
     public Consumer(boolean parity, Dropbox box) {
         this.consume_even = parity;
         this.box = box;
@@ -15,11 +15,14 @@ public class Consumer implements Runnable {
 
     public void run() {
         int x;
-        if(this.consume_even) {
-            x = this.box.take(true);
-        }
-        else {
-            x = this.box.take(false);
+        while(true) {
+            if(this.consume_even) {
+                x = this.box.take(true);
+            }
+            else {
+                x = this.box.take(false);
+            }
+            System.out.println("Consumed " + x);
         }
     }
 }

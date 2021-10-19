@@ -12,6 +12,10 @@ public class MainClass {
     private static final Random rng = new Random(System.currentTimeMillis());
 
     public static void main(String[] args) {
+        if(args.length < 3) {
+            System.out.println("Usage: java MainClass <studenti> <tesisti> <professori>, argomenti interi >= 0");
+            return; 
+        }
         // ottengo il numero di studenti, tesisti e professori dagli argomenti passati al programma
         int students = Integer.valueOf(args[0]);
         int thesis = Integer.valueOf(args[1]);
@@ -28,15 +32,21 @@ public class MainClass {
         Vector<Utente> all_users = new Vector<Utente>(students + thesis + professors);
         Laboratorio labMarzotto = new Laboratorio(numPC, students, thesis, professors, all_users);
 
-        for (int i = 0; i < students; i++) {
-            all_users.add(new Studente(numPC, labMarzotto));
+        if(students > 0) { 
+            for (int i = 0; i < students; i++) {
+                all_users.add(new Studente(numPC, labMarzotto));
+            }
         }
-        for (int i = 0; i < thesis; i++) {
-            // il tesista viene creato con un argomento che è un intero casuale in [0,19] che sarà l'indice del PC che richede
-            all_users.add(new Tesista(numPC, labMarzotto, Math.abs(rng.nextInt()) % numPC));
+        if(thesis > 0) {
+            for (int i = 0; i < thesis; i++) {
+                // il tesista viene creato con un argomento che è un intero casuale in [0,19] che sarà l'indice del PC che richede
+                all_users.add(new Tesista(numPC, labMarzotto, Math.abs(rng.nextInt()) % numPC));
+            }
         }
-        for (int i = 0; i < professors; i++) {
-            all_users.add(new Professore(numPC, labMarzotto));
+        if(professors > 0) {
+            for (int i = 0; i < professors; i++) {
+                all_users.add(new Professore(numPC, labMarzotto));
+            }
         }
         // faccio partire la simulazione: la terminazione del thread di tipo Laboratorio è nel suo metodo run()
         labMarzotto.start();

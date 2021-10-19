@@ -10,13 +10,17 @@ import java.util.Random;
 public class Producer implements Runnable {
     private static Random rng = new Random();
     private Dropbox box;
-    
+
     public Producer(Dropbox box) {
         this.box = box;
     }
 
     public void run() {
-        int x = Math.abs(rng.nextInt()) % 100;
-        this.box.put(x);
+        int x;
+        while(true) {
+            x = Math.abs(rng.nextInt()) % 100;
+            System.out.println("Generated " + x);
+            this.box.put(x);
+        }
     }
 }

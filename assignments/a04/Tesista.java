@@ -3,7 +3,7 @@ import java.lang.Math;
 /**
  * Classe Tesista: richede l'utilizzo sempre dello stesso PC
  */
-public class Tesista extends Utente implements Runnable {
+public class Tesista extends Utente {
     private int myPC;
 
     public Tesista(int nPCs, Laboratorio lab, int hisPC) {
@@ -16,22 +16,17 @@ public class Tesista extends Utente implements Runnable {
             long interval = Math.abs(super.rng.nextLong()) % 100;
             long workTime = Math.abs(super.rng.nextLong()) % 100;
             try {
-                // il tesista richiede il suo PC
-                super.laboratorio.request(this, this.myPC);
-                System.out.printf("User %d (Tesista): ottenuto il PC %d\n", Thread.currentThread().getId(), this.myPC);
-                // lo studente usa il PC
-                Thread.sleep(interval);
-
-                System.out.printf("User %d (Tesista): ho lavorato per %dms su %d\n", Thread.currentThread().getId(),
-                        workTime, this.myPC);
-                // il tesista ha terminato: libera il PC
-                super.laboratorio.freePC(this, this.myPC);
-
-                System.out.printf("User %d (Tesista): aspetto %dms\n", Thread.currentThread().getId(), interval);
+                // il tesista richiede il suo PC e lavora su di esso per il tempo richiesto
+                super.laboratorio.thesis_request(this.myPC, workTime);
+                System.out.printf("User %d (Tesista):"
+                    + "\n\tottenuto il PC %d"
+                    + "\n\tho lavorato per %dms sul PC %d"
+                    + "\n\taspetto %dms\n"
+                    , Thread.currentThread().getId(), this.myPC, workTime, this.myPC, interval);
                 // attesa tra richieste successive
                 Thread.sleep(interval);
             } catch (InterruptedException e) {
-                super.laboratorio.freePC(this, this.myPC);
+                //super.laboratorio.freePC(this, this.myPC);
             }
             super.numAccesses--;
         }

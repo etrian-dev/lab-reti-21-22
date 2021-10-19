@@ -1,9 +1,11 @@
+/**
+ * Classe che incapsula lo stato di un PC del Laboratorio
+ */
 public class Computer {
-    private int idx;
+    // stato del PC: free = true sse un Utente sta utilizzando il computer
     private boolean free;
 
-    public Computer(int id) {
-        this.idx = id;
+    public Computer() {
         this.free = true;
     }
 
@@ -14,6 +16,7 @@ public class Computer {
     public void occupy() {
         this.free = false;
     }
+
     public void free() {
         this.free = true;
     }
