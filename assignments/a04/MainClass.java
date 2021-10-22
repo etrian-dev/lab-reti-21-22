@@ -14,6 +14,10 @@ public class MainClass {
     private static final Random rng = new Random(System.currentTimeMillis());
 
     public static void main(String[] args) {
+        if(args.length != 3) {
+            System.out.println("Usage: java MainClass <studenti> <tesisti> <professori>, argomenti interi >= 0");
+            return;
+        }
         // ottengo il numero di studenti, tesisti e professori dagli argomenti passati al programma
         int students = Integer.valueOf(args[0]);
         int thesis = Integer.valueOf(args[1]);

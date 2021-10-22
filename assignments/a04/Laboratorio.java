@@ -180,7 +180,6 @@ public class Laboratorio extends Thread {
         // un Professore deve attendere fino a che tutti i PC del laboratorio non sono liberi
         synchronized (this.allPCs) {
             this.prof_waiting++; // per segnalare che vi è un professore in più in attesa
-            // NOTA: la seconda condizione per avere maggiore fairness tra professori
             while (this.occupiedPCs > 0) {
                 try {
                     //System.out.println("User " + Thread.currentThread().getId()
