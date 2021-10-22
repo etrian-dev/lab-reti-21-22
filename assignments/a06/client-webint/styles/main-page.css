@@ -1,0 +1,33 @@
+/* Defines the style of the symbol before the link text in the navbar ul */
+.main-navbar {
+    list-style: none;
+    display: flex; /* elements inside the navbar are laid out horizontally, rather than vertically */
+}
+main {
+    /* All children are flexible boxes */
+    display: flex;
+    height: 90%;
+    flex-wrap: wrap;
+    /* DEBUG */
+    border: 1px solid black;
+}
+/* This subsection contains the preview of files in the server and its content is updated
+ * dynamically (async)
+ */
+.server-state {
+    border: inherit;
+    flex: 3;
+}
+/* This rule applies to the subsection containing the file preview and log messages
+ * It shall appear as a text block taking 50% width of the section's space and delimited by a
+ * solid 1px black border
+ */
+.file-preview {
+    border: inherit;
+    flex: 5;
+}
+.buttons-requests {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+}

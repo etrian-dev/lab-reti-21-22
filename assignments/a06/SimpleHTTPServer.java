@@ -66,7 +66,7 @@ public class SimpleHTTPServer {
                     if (!requestLine.startsWith("GET")) {
                         String badreq = String.format(responseFormat, 0, 400, "Bad Request");
                         String body = String.format(resp_skel, "The request <i>" + requestLine
-                                + "</i? cannot be processed by this server");
+                                + "</i> cannot be processed by this server");
                         // stampo sul terminale l'esito (in rosso)
                         System.out.println((char) 27 + "[31m" + badreq + (char) 27 + "[0m");
                         // invio al client la risposta
