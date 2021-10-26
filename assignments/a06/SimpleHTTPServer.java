@@ -1,5 +1,4 @@
 import java.net.*;
-import java.util.Random;
 import java.io.*;
 
 /**
@@ -12,19 +11,22 @@ public class SimpleHTTPServer {
                     + "%s\n\t</body>\n</html>");
 
     public static void main(String[] args) {
-        // La porta del socket sul quale il server si mette in ascolto di richieste di connessione
+    	// L'output su terminale delle risposte inviate al browser (solo status line)
+    	// viene colorato soltanto se sta eseguendo su Linux
+    	boolean colored_output = System.getProperty("os.name").contains("Linux");
+        
+    	// La porta del socket sul quale il server si mette in ascolto di richieste di connessione
         int conn_port;
         // Se viene specificata una porta come parametro da riga di comando viene usata quella
         // per il socket (se disponibile), altrimenti ne viene selezionata una di default
         if (args.length == 1) {
             conn_port = Integer.parseInt(args[0]);
         } else {
-            Random rng = new Random(System.currentTimeMillis());
             conn_port = 0; // a random port gets assigned by the OS to this socket
         }
 
         // DEBUG
-        conn_port = 1111;
+        //conn_port = 1111;
 
         try {
             // il server stampa su quale porta è in ascolto
@@ -67,8 +69,13 @@ public class SimpleHTTPServer {
                         String badreq = String.format(responseFormat, 0, 400, "Bad Request");
                         String body = String.format(resp_skel, "The request <i>" + requestLine
                                 + "</i> cannot be processed by this server");
-                        // stampo sul terminale l'esito (in rosso)
-                        System.out.println((char) 27 + "[31m" + badreq + (char) 27 + "[0m");
+                        // stampo sul terminale l'esito (in rosso se settato output colorato)
+                        if(colored_output) {
+                        	System.out.println((char) 27 + "[31m" + badreq + (char) 27 + "[0m");
+                        }
+                        else {
+                        	System.out.println(badreq);
+                        }
                         // invio al client la risposta
                         replyStream.write(badreq.getBytes());
                         replyStream.write(body.getBytes());
@@ -88,8 +95,13 @@ public class SimpleHTTPServer {
                             String nfound = String.format(responseFormat, 0, 404, "Not Found");
                             String text = String.format(resp_skel,
                                     "Resource at URL <i>" + resource + "</i> not found");
-                            // stampo sul terminale l'esito (in rosso)
-                            System.out.println((char) 27 + "[31m" + nfound + (char) 27 + "[0m");
+                            // stampo sul terminale l'esito (in rosso se settato output colorato)
+                            if(colored_output) {
+                            	System.out.println((char) 27 + "[31m" + nfound + (char) 27 + "[0m");
+                            }
+                            else {
+                            	System.out.println(nfound);
+                            }
                             // invio la risposta al client
                             replyStream.write(nfound.getBytes());
                             replyStream.write(text.getBytes());
@@ -107,15 +119,20 @@ public class SimpleHTTPServer {
                                 System.out.println("Impossibile leggere la risorsa");
                                 continue;
                             }
-                            // stampo su terminale l'esito (in verde)
-                            System.out.println((char) 27 + "[32m" + response + (char) 27 + "[0m");
+                            // stampo sul terminale l'esito (in verde se settato output colorato)
+                            if(colored_output) {
+                            	System.out.println((char) 27 + "[32m" + response + (char) 27 + "[0m");
+                            }
+                            else {
+                            	System.out.println(response);
+                            }
 
                             replyStream.write(resp_body);
                             replyStream.flush();
                         }
                     }
 
-                    // La connessione non è persistente: chiudo il socket
+                    // Connessione non persistente: chiudo il socket
                     conn_sock.close();
                 } catch (IOException ioerr) {
                     System.out.println("IO socket error");
