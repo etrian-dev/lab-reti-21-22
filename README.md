@@ -23,4 +23,10 @@ gli assignment di ogni lezione, ognuno nella propria directory della forma a([0-
 - assignment: Implementazione dell'assignment del laboratorio informatico con monitor
 ## Lezione 5 - concurrent Collections and I/O
 - es1: Programma che prende una directory come parametro e ricorsivamente classifica files e directories, scrivendone i nomi su due files omonimi
-- assignment: Un file crawler: prende come input una directory e la esplora ricorsivamente, delegando a dei consumer thread la stampa dei file contenuti (usando una LinkedList per la comunicazione)
+- assignment: Un file crawler: prende come input una directory e la esplora ricorsivamente, delegando a dei consumer thread la stampa dei contenuti (usando una LinkedList per la comunicazione)
+## Lezione 6 - TCP sockets
+- es1: Un programma che accetta connessioni su un server TCP su una porta ed invia un file (sempre lo stesso) e poi chiude la connessione e termina (TODO: implementare anche un semplice client)
+- assignment: Un semplice HTTP server, che risponde soltanto alle richieste GET ed accetta connessioni TCP su socket legato ad una porta nota al client
+## Lezione 7 - UDP sockets
+- es1: PingPong server e client: server e client scambiano messaggi su un socket UDP
+- assignment: PingServer e PingClient con UDP: simulazione del programma ping, con l'introduzione artificiale di perdita pacchetti e ritardo

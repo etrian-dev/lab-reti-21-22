@@ -8,8 +8,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * Classe contenente il metodo main del file crawler. Per lanciare il programma è sufficiente
  * specificare il numero di thread consumatori e la directory di partenza (anche path relativo).
  * Un thread crawler è incaricato si esplorare l'albero di directory in modo ricorsivo, mentre
- * i k thread consumatori leggono i path delle directory dalla lista e stamperanno i nomi dei file (senza path)
- * contenuti in tale directory. I file che sono directory sono stampati tra parentesi tonde
+ * i k thread consumatori leggono i path delle directory dalla lista e stamperanno i nomi dei file
+ * contenuti in tale directory. I file che sono directory sono stampati tra parentesi tonde.
+ * Il formato dell'output è simile a quello del comando "ls -R" applicato alla directory iniziale
  */
 public class MainClass {
 	private static final String usage_msg = "Usage: java MainClass <consumers> <directory>";

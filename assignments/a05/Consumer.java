@@ -5,8 +5,7 @@ import java.util.concurrent.locks.Lock;
 
 /**
  * La classe Consumer preleva il path di una directory dalla coda e ne stampa i nomi dei file
- * (le subdirectories hanno il nome tra parentesi tonde). 
- * Il formato dell'output è simile a quello del comando "ls -R" applicato alla directory iniziale
+ * (le subdirectories hanno il nome tra parentesi tonde).
  */
 public class Consumer extends Thread {
 	private int consumerID;
@@ -30,7 +29,7 @@ public class Consumer extends Thread {
 		while (!terminate) {
 			this.lst_lock.lock();
 
-			// se la lista è vuota peekFirst ritorna null, altrimenti ritorna 
+			// se la lista è vuota peekFirst ritorna null, altrimenti ritorna
 			// (ma non rimuove) la testa della lista
 			String elem = null;
 			while ((elem = this.lst.peekFirst()) == null) {
