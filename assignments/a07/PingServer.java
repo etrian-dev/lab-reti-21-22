@@ -1,14 +1,18 @@
 import java.io.IOException;
+import java.net.BindException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.Random;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
+// Classe che implementa il PingServer: prende come argomento il numero di porta sul quale
+// il server deve essere in ascolto con un DatagramSocket per ricevere pacchetti di ping dal client
+// e rispedirli indietro
 public class PingServer extends Thread {
-    private static final String rcv_msg = "PING";
-    //private static final String snd_msg = "PONG";
+    // generatore usato per decidere se il server deve rispondere o meno ad messaggio ricevuto
     private static final Random rng = new Random();
-
 
     private int ping_port;
     private byte[] in_buf;
@@ -16,72 +20,81 @@ public class PingServer extends Thread {
 
     public PingServer(int port) {
         this.ping_port = port;
+        // alloco un array di dimensione fissa che sicuramente può contenere il messaggio
         this.in_buf = new byte[1024];
         this.in_pack = new DatagramPacket(this.in_buf, this.in_buf.length);
     }
 
-    // the run method
+    // Metodo run del thread: crea la DatagramSocket e si mette in ascolto di richieste da parte dei client
+    // Viene creato ed aperto un socket in ascolto sulla porta passata come parametro
+    // Tale socket viene utilizzato anche per inviare le risposte ai client
     public void run() {
-        try (DatagramSocket dsock = new DatagramSocket(this.ping_port)) {
-            while(true) {
+        try (DatagramSocket ping_sock = new DatagramSocket(this.ping_port)) {
+            while (true) {
                 // waits for a "PING"
                 try {
-                    dsock.receive(in_pack);
+                    ping_sock.receive(in_pack);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                     System.out.println("Ioex");
                 }
                 // if the request was a "PING"
-                int offt = in_pack.getOffset();
-                int len = in_pack.getLength();
-                byte[] data = in_pack.getData();
-                String msg = new String(data, offt, len);
-                if(msg.startsWith(PingServer.rcv_msg)) {
-                    System.out.print(msg);
-                    // PING received: do a coin flip to decide whether to PONG back
-                    // NOTE: the default packet loss percentage is 25% (though it's a PRNG...)
-                    if(rng.nextBoolean() || rng.nextBoolean()) {
-                        // wait for a random amount of ms before sending it
+                String msg =
+                        new String(in_pack.getData(), in_pack.getOffset(), in_pack.getLength());
+                if (msg.startsWith("PING")) {
+                    System.out
+                            .print(in_pack.getSocketAddress().toString().substring(1) + "> " + msg);
+                    // Decide (con probabilità circa del 25% se mandare o no risposta ed attende < 2000ms in caso affermativo)
+                    if (rng.nextBoolean() || rng.nextBoolean()) {
                         long waits = Math.abs(rng.nextLong()) % 2000;
                         try {
                             Thread.sleep(waits);
-                            System.out.println(" ACTION: delayed " + waits + " ms");
-                        } catch (Exception e) {
-                            //TODO: handle exception
-                            e.printStackTrace();
+                        } catch (InterruptedException e) {
+                            System.out.println("ERR: Server delay interrupted");
                         }
-                        // echo the packet back
+                        System.out.println(" ACTION: delayed " + waits + " ms");
                         try {
-                            dsock.send(in_pack);
-                        } catch (Exception e) {
-                            //TODO: handle exception
-                            e.printStackTrace();
+                            ping_sock.send(in_pack);
+                        } catch (IOException e) {
+                            System.out.println("ERR: Fallito invio messaggio");
                         }
-                    }
-                    else {
+                    } else {
                         System.out.println(" ACTION: not sent");
                     }
                 }
             }
-        } catch (SocketException e) {
-            System.out.printf("ERR: il socket non può essere inizializzato");
+        } catch (BindException be) {
+            // Distinguo le eccezioni di binding per dare all'utente un minimo di informazione aggiuntiva
+            System.out.println("ERR: -arg 1: Porta non disponibile al momento");
+        } catch (Exception exc) {
+            // Eccezione generica dovuta a qualche errore nella creazione della socket o invio/ricezione messaggi
+            System.out.println("ERR: -arg 1");
         }
     }
 
-    public static void main(String[] args) {
-        if(args.length == 0) {
-            System.out.println("ERR -arg 1: nessuna porta specificata");
-        }
-        else {
-            try {
-                // parses the commandline arg as the port where the server will be listening
-                int server_port = Integer.parseUnsignedInt(args[0]);
 
-                PingServer serv = new PingServer(server_port);
-                serv.start();
-            } catch (NumberFormatException ex) {
-                System.out.println("ERR -arg 1: numero porta non valido");
+
+    // Main del programma server: effettua il controllo degli argomenti da riga di comando e
+    // fa partire il thread PingServer
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Usage: java PingServer port");
+            return;
+        }
+        if (args.length != 1) {
+            System.out.println("ERR -arg 1");
+            return;
+        }
+        try {
+            int server_port = Integer.parseUnsignedInt(args[0]);
+            // controllo che la porta sia nel range consentito dal S.O.
+            if (server_port > 65535) {
+                throw new IllegalArgumentException();
             }
+            PingServer serv = new PingServer(server_port);
+            serv.start();
+        } catch (Exception e) {
+            System.out.println("ERR -arg 1");
         }
     }
 }
