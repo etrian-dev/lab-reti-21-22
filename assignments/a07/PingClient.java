@@ -5,12 +5,11 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.util.Random;
 
 // Classe che implementa il PingClient
 public class PingClient extends Thread {
     // Formato utilizzato per i messaggi di ping: PING seqno timestamp
-    private static final String ping_msg_format = "PING %d %d";
+    private static final String ping_msg_format = "PING %d %d (%d)";
     // Numero di messaggi di ping inviati al server
     private static final int tries = 10;
     // Timeout del socket su receive (ms)
@@ -35,7 +34,7 @@ public class PingClient extends Thread {
             ds.setSoTimeout((int) PingClient.timeout);
             // Inizializzo le variabili per le statistiche di ping
             int replies = 0;
-            long rtt = 0;
+            long start_rtt = 0, end_rtt = 0, rtt = 0;
             long min_rtt = PingClient.timeout;
             long max_rtt = 0;
             long total_wait = 0;
@@ -47,31 +46,38 @@ public class PingClient extends Thread {
             // delay server <= delay stampato dal client
             for (int i = 0; i < PingClient.tries; i++) {
                 // timestamp iniziale, scritto nel messaggio ed usato nel calcolo di rtt
-                rtt = System.currentTimeMillis();
-                String msg = String.format(PingClient.ping_msg_format, i, rtt);
+                start_rtt = System.currentTimeMillis();
+                String msg = String.format(PingClient.ping_msg_format, i, start_rtt, ds.getLocalPort());
                 DatagramPacket ping_packet = new DatagramPacket(msg.getBytes(), msg.length());
                 ping_packet.setAddress(this.host);
                 ping_packet.setPort(this.host_port);
                 try {
                     ds.send(ping_packet);
                     // Attende la risposta da parte del server (oppure va in timeout e viene sollevata l'eccezione)
-                    ds.receive(ping_packet);
-                    rtt = System.currentTimeMillis() - rtt;
-                    // Controllo che il messaggio ricevuto sia lo stesso che è stato inviato
-                    String response = new String(ping_packet.getData(), ping_packet.getOffset(),
-                            ping_packet.getLength());
-                    if (response.equals(msg)) {
-                        total_wait += rtt;
-                        replies++;
-                        min_rtt = (min_rtt > rtt ? rtt : min_rtt);
-                        max_rtt = (max_rtt < rtt ? rtt : max_rtt);
-                        // stampo rtt del ping corrente
-                        System.out.println(msg + " RTT: " + rtt + " ms");
-                    } else {
-                        System.out.println(
-                                msg + " Errore: risposta ricevuta differisce dal messaggio: "
-                                        + response);
-                    }
+                    String response = new String();
+                    // Il messaggio ricevuto potrebbe anche essere quello del ping precedente, che arriva dopo il timeout
+                    // per cui va scartato ogni messaggio fino a che non ho uguaglianza con quello atteso
+                    do {
+                        ds.receive(ping_packet);
+                        end_rtt = System.currentTimeMillis();
+                        // controllo se sono già oltre il timeout 
+                        // (devo farlo prima di stampare RTT, altrimenti stampa RTT > timeout)
+                        if (System.currentTimeMillis() - start_rtt >= PingClient.timeout) {
+                            throw new SocketTimeoutException();
+                        }
+                        // Controllo che il messaggio ricevuto sia lo stesso che è stato inviato
+                        response = new String(ping_packet.getData(), ping_packet.getOffset(),
+                                ping_packet.getLength());
+                        if (response.equals(msg)) {
+                            rtt = end_rtt - start_rtt;
+                            total_wait += rtt;
+                            replies++;
+                            min_rtt = (min_rtt > rtt ? rtt : min_rtt);
+                            max_rtt = (max_rtt < rtt ? rtt : max_rtt);
+                            // stampo rtt del ping corrente
+                            System.out.println(msg + " RTT: " + rtt + " ms");
+                        } // altrimenti messaggio proveniente dal ping precedente che è andato in timeout
+                    } while(!response.equals(msg));
                 } catch (SocketTimeoutException e) {
                     // Il client non ha ricevuto risposta entro il timeout 
                     // (non viene conteggiato ai fini del calcolo dell'RTT medio)

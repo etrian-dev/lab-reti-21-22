@@ -4,8 +4,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.util.Random;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // Classe che implementa il PingServer: prende come argomento il numero di porta sul quale
 // il server deve essere in ascolto con un DatagramSocket per ricevere pacchetti di ping dal client
@@ -13,16 +13,50 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class PingServer extends Thread {
     // generatore usato per decidere se il server deve rispondere o meno ad messaggio ricevuto
     private static final Random rng = new Random();
+    // classe interna usata per implementare la task di echo
+    private class EchoSender implements Runnable {
+        private DatagramSocket ds;
+        private DatagramPacket packet;
+        public EchoSender(DatagramPacket dp) {
+            try {
+                // il socket UDP per l'eco è su una porta qualunque
+                this.ds = new DatagramSocket();
+            } catch (SocketException e) {
+                System.out.println("ERR: EchoSender socket creation failed");
+            }// il pacchetto di cui effettuare l'eco
+            this.packet = dp;
+        }
+        public void run() {
+            String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
+            System.out.print(packet.getSocketAddress().toString().substring(1) + "> " + msg);
+            // Decide (con probabilità circa del 25% se mandare o no risposta ed attende < 2000ms in caso affermativo)
+            if (rng.nextBoolean() || rng.nextBoolean()) {
+                // NOTA: Il client potrebbe andare comunque in timeout se si introduce un ritardo vicino al timeout
+                // e l'invio ritardasse (per qualche motivo) di alcuni ms.
+                // In tal caso il messaggio inviato viene scartato (dettagliato nel client)
+                long waits = Math.abs(rng.nextLong()) % 2000;
+                System.out.println(" ACTION: delayed " + waits + " ms");
+                try {
+                    Thread.sleep(waits);
+                } catch (InterruptedException e) {
+                    System.out.println("ERR: Server delay interrupted");
+                }
+                try {
+                    ds.send(packet);
+                } catch (IOException e) {
+                    System.out.println("ERR: Fallito invio messaggio");
+                }
+            } else {
+                System.out.println(" ACTION: not sent");
+            }
+        }
+    }
 
     private int ping_port;
-    private byte[] in_buf;
-    private DatagramPacket in_pack;
+    private ExecutorService tpool = Executors.newCachedThreadPool();
 
     public PingServer(int port) {
         this.ping_port = port;
-        // alloco un array di dimensione fissa che sicuramente può contenere il messaggio
-        this.in_buf = new byte[1024];
-        this.in_pack = new DatagramPacket(this.in_buf, this.in_buf.length);
     }
 
     // Metodo run del thread: crea la DatagramSocket e si mette in ascolto di richieste da parte dei client
@@ -32,35 +66,21 @@ public class PingServer extends Thread {
         try (DatagramSocket ping_sock = new DatagramSocket(this.ping_port)) {
             while (true) {
                 // waits for a "PING"
+                byte[] buf = new byte[100];
+                DatagramPacket dp = new DatagramPacket(buf, buf.length);
                 try {
-                    ping_sock.receive(in_pack);
+                    ping_sock.receive(dp);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                     System.out.println("Ioex");
                 }
                 // if the request was a "PING"
                 String msg =
-                        new String(in_pack.getData(), in_pack.getOffset(), in_pack.getLength());
+                        new String(dp.getData(), dp.getOffset(), dp.getLength());
                 if (msg.startsWith("PING")) {
-                    System.out
-                            .print(in_pack.getSocketAddress().toString().substring(1) + "> " + msg);
-                    // Decide (con probabilità circa del 25% se mandare o no risposta ed attende < 2000ms in caso affermativo)
-                    if (rng.nextBoolean() || rng.nextBoolean()) {
-                        long waits = Math.abs(rng.nextLong()) % 2000;
-                        try {
-                            Thread.sleep(waits);
-                        } catch (InterruptedException e) {
-                            System.out.println("ERR: Server delay interrupted");
-                        }
-                        System.out.println(" ACTION: delayed " + waits + " ms");
-                        try {
-                            ping_sock.send(in_pack);
-                        } catch (IOException e) {
-                            System.out.println("ERR: Fallito invio messaggio");
-                        }
-                    } else {
-                        System.out.println(" ACTION: not sent");
-                    }
+                    EchoSender s = new EchoSender(dp);
+                    tpool.execute(s);
+                    // TODO: handle exception
                 }
             }
         } catch (BindException be) {
