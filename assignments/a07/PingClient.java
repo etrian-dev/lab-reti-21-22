@@ -9,7 +9,7 @@ import java.net.UnknownHostException;
 // Classe che implementa il PingClient
 public class PingClient extends Thread {
     // Formato utilizzato per i messaggi di ping: PING seqno timestamp
-    private static final String ping_msg_format = "PING %d %d (%d)";
+    private static final String ping_msg_format = "PING %d %d";
     // Numero di messaggi di ping inviati al server
     private static final int tries = 10;
     // Timeout del socket su receive (ms)
@@ -18,7 +18,7 @@ public class PingClient extends Thread {
     private InetAddress host;
     private int host_port;
 
-    // Il costruttore inizializza indirizzo e porta del server, sollevando 
+    // Il costruttore inizializza indirizzo e porta del server, sollevando
     // un'eccezione se sname non può essere risolto
     // NOTA: se la porta passata non è quella su cui il server è in ascolto, ma è libera,
     // allora tutti i messaggi di ping inviati andranno in timeout
@@ -47,7 +47,7 @@ public class PingClient extends Thread {
             for (int i = 0; i < PingClient.tries; i++) {
                 // timestamp iniziale, scritto nel messaggio ed usato nel calcolo di rtt
                 start_rtt = System.currentTimeMillis();
-                String msg = String.format(PingClient.ping_msg_format, i, start_rtt, ds.getLocalPort());
+                String msg = String.format(PingClient.ping_msg_format, i, start_rtt);
                 DatagramPacket ping_packet = new DatagramPacket(msg.getBytes(), msg.length());
                 ping_packet.setAddress(this.host);
                 ping_packet.setPort(this.host_port);
@@ -60,7 +60,7 @@ public class PingClient extends Thread {
                     do {
                         ds.receive(ping_packet);
                         end_rtt = System.currentTimeMillis();
-                        // controllo se sono già oltre il timeout 
+                        // controllo se sono già oltre il timeout
                         // (devo farlo prima di stampare RTT, altrimenti stampa RTT > timeout)
                         if (System.currentTimeMillis() - start_rtt >= PingClient.timeout) {
                             throw new SocketTimeoutException();
@@ -79,7 +79,7 @@ public class PingClient extends Thread {
                         } // altrimenti messaggio proveniente dal ping precedente che è andato in timeout
                     } while(!response.equals(msg));
                 } catch (SocketTimeoutException e) {
-                    // Il client non ha ricevuto risposta entro il timeout 
+                    // Il client non ha ricevuto risposta entro il timeout
                     // (non viene conteggiato ai fini del calcolo dell'RTT medio)
                     System.out.println(msg + " RTT: *");
                     //total_wait += PingClient.timeout;
