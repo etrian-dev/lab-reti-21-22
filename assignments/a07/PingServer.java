@@ -6,6 +6,7 @@ import java.net.SocketException;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 // Classe che implementa il PingServer: prende come argomento il numero di porta sul quale
 // il server deve essere in ascolto con un DatagramSocket per ricevere pacchetti di ping dal client
@@ -79,8 +80,13 @@ public class PingServer extends Thread {
                         new String(dp.getData(), dp.getOffset(), dp.getLength());
                 if (msg.startsWith("PING")) {
                     EchoSender s = new EchoSender(dp);
-                    tpool.execute(s);
-                    // TODO: handle exception
+                    try {
+                        tpool.execute(s);
+                    } catch(RejectedExecutionException rejEx) {
+                        // Se non posso eseguire la task lo stampo a video: il client andrà in timeout
+                        System.out.print(dp.getSocketAddress().toString().substring(1) + "> " + msg);
+                        System.out.println(" ACTION: not sent");
+                    }
                 }
             }
         } catch (BindException be) {
