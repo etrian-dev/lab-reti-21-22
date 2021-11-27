@@ -17,7 +17,7 @@ public class EchoServer {
     boolean msgRecv = false;
 
     public static int BUFSZ = 8192;
-    public static String ECHO_MSG = " [echoed by server]\n";
+    public static String ECHO_MSG = " [echoed by server]";
 
     public EchoServer(Selector sel, String host, int port) throws IOException {
         // Creates a ServerSocketChannel to listen for connections from clients
