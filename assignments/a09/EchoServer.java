@@ -7,8 +7,6 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.commons.cli.*;
 
@@ -56,7 +54,6 @@ public class EchoServer {
     // The SocketChannel is ready for reading
     public void handle_read(Selector sel, SelectionKey key, SocketChannel chan) {
         try {
-            //System.out.println("Ready to read");
             // get the attached buffer
             ByteBuffer bbuf = (ByteBuffer) key.attachment();
             bbuf.clear();
@@ -84,7 +81,6 @@ public class EchoServer {
         try {
             ByteBuffer bbuf = (ByteBuffer) key.attachment();
             bbuf.flip();
-            //System.out.println("Ready to write");
             chan.write(bbuf);
             System.out.println("Echoed \"" + new String(bbuf.array(), 0, bbuf.limit()) + "\"");
             // this ensures that only the read operation is in the interest set of this key
@@ -108,7 +104,6 @@ public class EchoServer {
             CommandLine parsed_args = parser.parse(all_opts, args, true);
             port = Integer.valueOf(parsed_args.getOptionValue(port_opt));
         } catch (Exception parseEx) {
-            //parseEx.printStackTrace();
             help.printHelp("EchoServer", all_opts);
             return;
         }
