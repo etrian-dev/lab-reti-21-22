@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.Scanner;
 
@@ -16,27 +17,22 @@ public class EchoClient {
 		schan.connect(new InetSocketAddress(hostname, port));
 	}
 
-	public void send_data(String data) {
+	public void send_data(String data) throws IOException {
 		ByteBuffer bbuf = ByteBuffer.wrap(data.getBytes());
 		int written = 0;
-		try {
-			while (bbuf.hasRemaining()) {
-				written += schan.write(bbuf);
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
+		while (bbuf.hasRemaining()) {
+			written += schan.write(bbuf);
 		}
 	}
 
-	public void read_reply(int len) {
+	public void read_reply(int len) throws IOException {
 		ByteBuffer buf = ByteBuffer.allocate(len + EchoServer.ECHO_MSG.length() + 1);
-		try {
-			int bread = schan.read(buf);
-			String msg = new String(buf.array(), 0, bread);
-			System.out.println(msg);
-		} catch (Exception e) {
-			e.printStackTrace();
+		int bread = schan.read(buf);
+		if(bread == -1) {
+			return;
 		}
+		String msg = new String(buf.array(), 0, bread);
+		System.out.println(msg);
 	}
 
 	public static void main(String[] args) {
@@ -74,8 +70,16 @@ public class EchoClient {
 			while (true) {
 				try {
 					String line = scan.nextLine();
-					client.send_data(line);
-					client.read_reply(line.length());
+					try {
+						client.send_data(line);
+						client.read_reply(line.length());
+					} catch (ClosedChannelException closed) {
+						System.out.println("ERR: socket closed: " + closed.getMessage());
+						return;
+					} catch (IOException ex) {
+						System.out.println("ERR: IO error: " + ex.getMessage());
+						return;
+					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
