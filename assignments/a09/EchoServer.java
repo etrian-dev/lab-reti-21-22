@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -7,151 +8,148 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import org.apache.commons.cli.*;
 
 public class EchoServer {
-    ServerSocketChannel schan_listener;
-    SelectionKey key;
-    boolean msgRecv = false;
-
-    public static int PORT_DFLT = 33333;
+    // Vari valori di default
+    public static String PORT_DFLT = "33333";
     public static int BUFSZ = 8192;
     public static String ECHO_MSG = " [echoed by server]";
 
+    // Il socketchannel del server
+    private ServerSocketChannel schan_listener;
+    SelectionKey key;
+
+    // Costruttore del server: prende come parametro il selector sul quale registra
+    // il ServerSocketChannel per l'operazione di accept e controlla porte
     public EchoServer(Selector sel, int port) throws IOException {
-        // Creates a ServerSocketChannel to listen for connections from clients
-        schan_listener = ServerSocketChannel.open();
-        schan_listener.configureBlocking(false);
-        // If the host does not specify a valid port, then choose a free one
-        int serv_port = (port > 1024 && port < 65536 ? port : 0);
-        schan_listener.bind(new InetSocketAddress("localhost", serv_port));
-        System.out.println("Server listening for connections on port "
-                + schan_listener.socket().getLocalPort());
-        // register for accepting operations to the selector
-        key = schan_listener.register(sel, SelectionKey.OP_ACCEPT);
+        this.schan_listener = ServerSocketChannel.open();
+        // Settato in modalità non bloccante
+        this.schan_listener.configureBlocking(false);
+        // Controllo porta valida
+        if (port < 1024 || port > 65536) {
+            throw new IOException("Porta fuori dal range o occupata");
+        }
+        // Potrebbe comunque essere occupata, per cui catch con messaggio
+        try {
+            this.schan_listener.bind(new InetSocketAddress("localhost", port));
+        } catch (BindException e) {
+            throw new IOException("Porta " + port + " occupata");
+        }
+        System.out.println("Server in ascolto sulla porta " + port);
+        // Registro il server sul selettore per accept
+        this.key = schan_listener.register(sel, SelectionKey.OP_ACCEPT);
     }
 
-    // Accepts a new connection from a client and registers
-    // the newly created SocketChannel for reading with the same selector
-    public void accept_conn(Selector sel) {
+    // Accetta una nuova connessione dal client e registra il SocketChannel creato in lettura
+    public void accept_conn(Selector sel) throws IOException {
         ServerSocketChannel schan = (ServerSocketChannel) key.channel();
-        try {
-            SocketChannel ss = schan.accept();
-            System.out
-                    .println("Accepted connection from client " + ss.getLocalAddress().toString());
-            // The SocketChannel must be set nonblocking
-            ss.configureBlocking(false);
-            // A new buffer for this client is alloc'd and passed as an attachment
-            ByteBuffer buf = ByteBuffer.allocate(EchoServer.BUFSZ);
-            // register the socket for reading operations on the selector
-            ss.register(sel, SelectionKey.OP_READ, buf);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        SocketChannel ss = schan.accept();
+        System.out.println("Connessione accettata dal client " + ss.getLocalAddress().toString());
+        // SocketChannel settato non bloccante
+        ss.configureBlocking(false);
+        // Il client usa sempre questo buffer passato come attachment
+        ByteBuffer buf = ByteBuffer.allocate(EchoServer.BUFSZ);
+        ss.register(sel, SelectionKey.OP_READ, buf);
     }
 
-    // The SocketChannel is ready for reading
-    public void handle_read(Selector sel, SelectionKey key, SocketChannel chan) {
-        try {
-            //System.out.println("Ready to read");
-            // get the attached buffer
-            ByteBuffer bbuf = (ByteBuffer) key.attachment();
-            bbuf.clear();
-            int bytes_read = chan.read(bbuf);
-            // End of stream if -1 is returned
-            if (bytes_read == -1) {
-                key.cancel();
-                chan.close();
-                return;
-            }
-            // set the limit to the bytes read
-            bbuf.put(EchoServer.ECHO_MSG.getBytes());
-            bbuf.limit(bytes_read + EchoServer.ECHO_MSG.length());
-            // register the write operation on the channel (passing in the buffer to be written)
-            chan.register(sel, SelectionKey.OP_WRITE, bbuf);
-            // this ensures that only the write operation is in the interest set of this key
-            key.interestOpsAnd(SelectionKey.OP_WRITE);
-        } catch (Exception e) {
-            e.printStackTrace();
+    // SocketChannel pronto per lettura
+    public void handle_read(Selector sel, SelectionKey key, SocketChannel chan) throws IOException {
+        // Ottiene il ByteBuffer e tenta di leggere
+        ByteBuffer bbuf = (ByteBuffer) key.attachment();
+        bbuf.clear();
+        int bytes_read = chan.read(bbuf);
+        // End of stream se ritorna -1 => chiudo il channel dopo aver fatto cancel
+        if (bytes_read == -1) {
+            key.cancel();
+            chan.close();
+            return;
         }
+        // Concateno il messaggio del server e setto limit al messaggio generato
+        bbuf.put(EchoServer.ECHO_MSG.getBytes());
+        bbuf.limit(bytes_read + EchoServer.ECHO_MSG.length());
+        // Registro il channel per scrittura (e cancello la registrazione per la lettura)
+        chan.register(sel, SelectionKey.OP_WRITE, bbuf);
+        key.interestOpsAnd(SelectionKey.OP_WRITE);
+
     }
 
-    // The SocketChannel is ready for writing
-    public void handle_write(Selector sel, SelectionKey key, SocketChannel chan) {
-        try {
-            ByteBuffer bbuf = (ByteBuffer) key.attachment();
-            bbuf.flip();
-            //System.out.println("Ready to write");
-            chan.write(bbuf);
-            System.out.println("Echoed \"" + new String(bbuf.array(), 0, bbuf.limit()) + "\"");
-            // this ensures that only the read operation is in the interest set of this key
-            chan.register(sel, SelectionKey.OP_READ, bbuf);
-            key.interestOpsAnd(SelectionKey.OP_READ);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    // SocketChannel pronto per scrittura
+    public void handle_write(Selector sel, SelectionKey key, SocketChannel chan)
+            throws IOException {
+        // Recupero il buffer contenente il messaggio da inviare
+        ByteBuffer bbuf = (ByteBuffer) key.attachment();
+        bbuf.flip();
+        chan.write(bbuf);
+        System.out.println("Echoed \"" + new String(bbuf.array(), 0, bbuf.limit()) + "\"");
+        // Cancello registrazione per scrittura e la metto per lettura
+        chan.register(sel, SelectionKey.OP_READ, bbuf);
+        key.interestOpsAnd(SelectionKey.OP_READ);
     }
 
     public static void main(String[] args) {
-        // Define command line options
+        // Definisco l'opzione da riga di comando -p per specificare la porta
         Options all_opts = new Options();
-        Option port_opt = new Option("p", true,
-                "The port the server listens to for new TCP connections");
+        Option port_opt =
+                new Option("p", true, "Porta su cui il server è in ascolto per nuove connessioni ("
+                        + EchoServer.PORT_DFLT + " di default)");
+        port_opt.setOptionalArg(true);
         all_opts.addOption(port_opt);
         HelpFormatter help = new HelpFormatter();
         CommandLineParser parser = new DefaultParser();
+
         Integer port = null;
         try {
-            CommandLine parsed_args = parser.parse(all_opts, args, true);
-            port = Integer.valueOf(parsed_args.getOptionValue(port_opt));
+            CommandLine parsed_args = parser.parse(all_opts, args);
+            port = Integer
+                    .valueOf(new String(parsed_args.getOptionValue("p", EchoServer.PORT_DFLT)));
         } catch (Exception parseEx) {
-            //parseEx.printStackTrace();
             help.printHelp("EchoServer", all_opts);
             return;
         }
-        if(port == null) {
-            port = EchoServer.PORT_DFLT;
-        }
+
         Selector sel = null;
-        EchoServer serv = null;
         try {
             // creates a new selector and passed it to an instance of the EchoServer
             sel = Selector.open();
-            serv = new EchoServer(sel, port);
         } catch (IOException io) {
             System.out.println("ERR: Apertura selettore fallita");
-            io.printStackTrace();
+            return;
         }
+
+        EchoServer serv = null;
+        try {
+            serv = new EchoServer(sel, port);
+        } catch (IOException e) {
+            System.out.println("ERR: " + e.getMessage());
+            return;
+        }
+
+        // Loop di processing del server: effettua select ed esegue la funzione appropriata
         while (true) {
             try {
                 if (sel.select() > 0) {
-                    // Get the set of ready keys into an iterator
                     Set<SelectionKey> readyKeys = sel.selectedKeys();
                     Iterator<SelectionKey> iter = readyKeys.iterator();
                     while (iter.hasNext()) {
                         SelectionKey key = iter.next();
-                        // once a SelectionKey has been retrieved,
-                        //remove it from the set of selected keys
                         iter.remove();
                         if (key.isAcceptable()) {
-                            // The ServerSocketChannel is ready to accept a new connection
-                            serv.accept_conn(sel); // creates a new socket SocketChannel and registers it
+                            // Il ServerSocketChannel è pronto per ricevere una nuova connessione
+                            // Crea un SocketChannel per il client e lo registra per lettura
+                            serv.accept_conn(sel);
                         }
                         if (key.isReadable()) {
-                            // Bytes can be read from this (Socket)Channel
+                            // Il SocketChannel indicato è pronto in lettura
                             serv.handle_read(sel, key, (SocketChannel) key.channel());
                         } else if (key.isWritable()) {
-                            // Bytes can be written to this (Socket)Channel
+                            // Il SocketChannel indicato è pronto in scrittura
                             serv.handle_write(sel, key, (SocketChannel) key.channel());
                         }
                     }
                 }
             } catch (IOException io) {
-                System.out.println("ERR: select fallita (IOException)");
-                io.printStackTrace();
+                System.out.println("ERR: " + io.getMessage());
             }
         }
     }
