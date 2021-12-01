@@ -12,9 +12,17 @@ public class EchoClient {
 	SocketChannel schan;
 
 	public EchoClient(String hostname, int port) throws IOException {
-		System.out.println("Connessione al server sulla porta " + port);
+		// Controllo porta valida
+		if (port < 1024 || port > 65536) {
+			throw new IOException("Porta fuori dal range o occupata");
+		}
+		InetSocketAddress iaddr = new InetSocketAddress(hostname, port);
+		if (iaddr.isUnresolved()) {
+			throw new IOException("Indirizzo server non risolvibile");
+		}
+		System.out.println("Connessione al server su " + iaddr.toString());
 		schan = SocketChannel.open();
-		schan.connect(new InetSocketAddress(hostname, port));
+		schan.connect(iaddr);
 	}
 
 	public boolean send_data(String data) {
@@ -61,20 +69,25 @@ public class EchoClient {
 		// Define command line options
 		Options all_opts = new Options();
 		Option host_opt = new Option("h", true, "Hostname del server (localhost di default)");
-		host_opt.setOptionalArg(true);
 		Option port_opt = new Option("p", true, "Porta su cui il server è in ascolto");
+		host_opt.setOptionalArg(true);
 		port_opt.setOptionalArg(true);
+		all_opts.addOption(host_opt);
 		all_opts.addOption(port_opt);
 		HelpFormatter help = new HelpFormatter();
 		CommandLineParser parser = new DefaultParser();
 		try {
 			CommandLine parsed_args = parser.parse(all_opts, args);
-			host = parsed_args.getOptionValue("h", EchoClient.HOST_DFLT);
+			// Se l'opzione non ha argomento o non è stata specificata viene inserito il valore di default
 			port = Integer.valueOf(parsed_args.getOptionValue("p", EchoServer.PORT_DFLT));
+			host = parsed_args.getOptionValue("h", EchoClient.HOST_DFLT);
+			System.out.println("host: " + host);
 		} catch (Exception parseEx) {
+			parseEx.printStackTrace();
 			help.printHelp("EchoClient", all_opts);
 			return;
 		}
+
 		// Leggo con lo scanner una riga da stdin
 		try (Scanner scan = new Scanner(System.in);) {
 

@@ -28,7 +28,7 @@ public class EchoServer {
         this.schan_listener.configureBlocking(false);
         // Controllo porta valida
         if (port < 1024 || port > 65536) {
-            throw new IOException("Porta fuori dal range o occupata");
+            throw new IOException("Porta fuori dal range");
         }
         // Potrebbe comunque essere occupata, per cui catch con messaggio
         try {
@@ -101,8 +101,8 @@ public class EchoServer {
         Integer port = null;
         try {
             CommandLine parsed_args = parser.parse(all_opts, args);
-            port = Integer
-                    .valueOf(new String(parsed_args.getOptionValue("p", EchoServer.PORT_DFLT)));
+            // Se l'opzione non ha argomento o non è stata specificata viene inserito il valore di default
+            port = Integer.valueOf(parsed_args.getOptionValue("p", EchoServer.PORT_DFLT));
         } catch (Exception parseEx) {
             help.printHelp("EchoServer", all_opts);
             return;
