@@ -25,19 +25,15 @@ public class EchoClient {
 		schan.connect(iaddr);
 	}
 
-	public boolean send_data(String data) {
+	public boolean send_data(String data) throws IOException {
 		if (!schan.isOpen()) {
 			return false;
 		}
 
 		ByteBuffer bbuf = ByteBuffer.wrap(data.getBytes());
 		int written = 0;
-		try {
-			while (bbuf.hasRemaining()) {
-				written += schan.write(bbuf);
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
+		while (bbuf.hasRemaining()) {
+			written += schan.write(bbuf);
 		}
 		return true;
 	}

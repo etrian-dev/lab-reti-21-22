@@ -1,10 +1,17 @@
+CC = javac
+RUN = java
 CP = ".:commons-cli-1.5.0.jar"
-.PHONY: all runserv runclient
+.PHONY: all clean runserv runclient
 
-all: EchoServer.java EchoClient.java
-	javac -cp $(CP) EchoServer.java
-	javac -cp $(CP) EchoClient.java
+all: EchoServer.class EchoClient.class
+
+EchoServer.class: EchoServer.java
+	$(CC) -cp $(CP) $<
+EchoClient.class: EchoClient.java
+	$(CC) -cp $(CP) $<
 runserv: EchoServer.class
-	java -cp $(CP) EchoServer $(ARGS)
+	$(RUN) -cp $(CP) EchoServer $(ARGS)
 runclient: EchoClient.class
-	java -cp $(CP) EchoClient localhost $(ARGS) 
+	$(RUN) -cp $(CP) EchoClient localhost $(ARGS) 
+clean:
+	rm $(wildcard *.class)
