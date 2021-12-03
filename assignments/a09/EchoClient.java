@@ -3,6 +3,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import org.apache.commons.cli.*;
 
@@ -99,6 +100,8 @@ public class EchoClient {
 						System.out.println("ERR: Impossibile ricevere il messaggio");
 						return;
 					}
+				} catch (NoSuchElementException scanner_exc) {
+					return;
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
