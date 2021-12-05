@@ -1,21 +1,19 @@
-import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.rmi.server.RemoteServer;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 
 public class GestoreCongressoImpl extends UnicastRemoteObject implements GestoreCongresso {
-	int x;
+	private ProgrammaCongresso programma;
 
 	public GestoreCongressoImpl() throws RemoteException {
-		this.x = 10;
+		this.programma = new ProgrammaCongresso();
 	}
 
-	public void getCongressSummary() throws RemoteException {
-		System.out.println("Sommario congresso");
+	public ArrayList<ArrayList<String[]>> getCongressSummary() throws RemoteException {
+		return this.programma.getProgram();
 	}
 
-	public boolean registerSpeaker(String speaker, int session) throws RemoteException {
-		System.out.println("Registrazione speaker");
-		return true;
+	public boolean registerSpeaker(int day, int session, String speaker) throws RemoteException {
+		return (this.programma.setSpeaker(day, session, speaker) ? true : false);
 	}
 }
